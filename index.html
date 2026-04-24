@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinanceHub - Fikcyjny Bank</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --surface-light: #334155;
+            --text: #f1f5f9;
+            --text-muted: #cbd5e1;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        html, body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, var(--bg) 0%, #1a1f3a 100%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--surface-light);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .navbar-brand::before {
+            content: "🏦";
+            font-size: 1.75rem;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 1rem;
+            list-style: none;
+        }
+
+        .nav-menu a {
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            transition: all 0.3s;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 1rem;
+        }
+
+        .nav-menu a:hover,
+        .nav-menu a.active {
+            color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .nav-right {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .user-info {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .btn {
+            padding: 0.625rem 1.25rem;
+            border: none;
+            border-radius: 0.375rem;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--surface-light);
+            color: var(--text);
+        }
+
+        .btn-secondary:hover {
+            background: var(--secondary);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--surface-light);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg);
+            border: 1px solid var(--surface-light);
+            border-radius: 0.375rem;
+            color: var(--text);
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(236, 72, 153, 0.1));
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .account-card {
+            background: linear-gradient(135deg, var(--surface), var(--surface-light));
+            border: 1px solid var(--surface-light);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .account-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .account-name {
+            font-size: 1.125rem;
+            font-weight: bold;
+        }
+
+        .account-balance {
+            font-size: 1.75rem;
+            font-weight: bold;
+            color: var(--success);
+        }
+
+        .account-number {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-pending {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+
+        .badge-approved {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .badge-rejected {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        .application-card {
+            background: var(--surface);
+            border: 1px solid var(--surface-light);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .application-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .application-user {
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .application-date {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .application-reason {
+            color: var(--text-muted);
+            margin: 1rem 0;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-left: 3px solid var(--primary);
+            border-radius: 0.375rem;
+        }
+
+        .application-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .application-actions .btn {
+            flex: 1;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 0.375rem;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-10px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border-color: var(--success);
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border-color: var(--danger);
+        }
+
+        .alert-info {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .modal-content {
+            background: var(--surface);
+            border-radius: 0.75rem;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .login-box {
+            background: var(--surface);
+            border: 1px solid var(--surface-light);
+            border-radius: 1rem;
+            padding: 2.5rem;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+        }
+
+        .login-title {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-align: center;
+        }
+
+        .login-subtitle {
+            color: var(--text-muted);
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 0.875rem;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--surface-light);
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 1rem;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .tab-button.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .balance-display {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: 0.75rem;
+            padding: 2rem;
+            color: white;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .balance-label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .balance-amount {
+            font-size: 3rem;
+            font-weight: bold;
+        }
+
+        .transaction-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .transaction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: var(--bg);
+            border-radius: 0.375rem;
+            border-left: 3px solid var(--primary);
+        }
+
+        .transaction-info {
+            flex: 1;
+        }
+
+        .transaction-type {
+            font-weight: 500;
+        }
+
+        .transaction-date {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .transaction-amount {
+            font-weight: bold;
+            font-size: 1.125rem;
+        }
+
+        .transaction-amount.positive {
+            color: var(--success);
+        }
+
+        .transaction-amount.negative {
+            color: var(--danger);
+        }
+
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 1rem;
+            }
+
+            .nav-menu {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .balance-amount {
+                font-size: 2rem;
+            }
+
+            .modal-content {
+                padding: 1.5rem;
+            }
+
+            .login-box {
+                padding: 1.5rem;
+            }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--surface-light);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="loginPage" class="page active">
+        <div class="login-container">
+            <div class="login-box">
+                <div class="login-title">🏦 FinanceHub</div>
+                <div class="login-subtitle">Fikcyjny Bank dla Graczy</div>
+
+                <div class="tabs">
+                    <button class="tab-button active" onclick="switchTab('login')">Logowanie</button>
+                    <button class="tab-button" onclick="switchTab('register')">Rejestracja</button>
+                </div>
+
+                <div id="loginTab" class="tab-content active">
+                    <form id="loginForm" onsubmit="handleLogin(event)">
+                        <div class="form-group">
+                            <label for="loginEmail">Email</label>
+                            <input type="email" id="loginEmail" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="loginPassword">Hasło</label>
+                            <input type="password" id="loginPassword" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Zaloguj się</button>
+                    </form>
+                </div>
+
+                <div id="registerTab" class="tab-content">
+                    <form id="registerForm" onsubmit="handleRegister(event)">
+                        <div class="form-group">
+                            <label for="registerName">Nazwa Gracza</label>
+                            <input type="text" id="registerName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="registerEmail">Email</label>
+                            <input type="email" id="registerEmail" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="registerPassword">Hasło</label>
+                            <input type="password" id="registerPassword" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Zarejestruj się</button>
+                    </form>
+                </div>
+
+                <div id="authMessage" class="alert" style="display: none; margin-top: 1rem;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Page -->
+    <div id="appPage" class="page">
+        <nav class="navbar">
+            <div class="navbar-brand">FinanceHub</div>
+            <ul class="nav-menu">
+                <li><a onclick="switchPage('dashboard')" class="nav-link active">Pulpit</a></li>
+                <li><a onclick="switchPage('application')" class="nav-link">Aplikacja na Konto</a></li>
+                <li><a onclick="switchPage('accounts')" class="nav-link">Moje Konta</a></li>
+                <li><a onclick="switchPage('transfer')" class="nav-link">Transfer</a></li>
+                <li><a onclick="switchPage('admin')" class="nav-link" id="adminLink" style="display: none;">Admin</a></li>
+            </ul>
+            <div class="nav-right">
+                <div class="user-info">
+                    <span id="userDisplay"></span>
+                </div>
+                <button class="btn btn-secondary" onclick="handleLogout()">Wyloguj</button>
+            </div>
+        </nav>
+
+        <div class="container">
+            <!-- Dashboard -->
+            <div id="dashboard" class="page active">
+                <div id="dashboardAlerts"></div>
+                <h1 style="margin-bottom: 2rem;">Witaj, <span id="userName">Graczu</span>! 👋</h1>
+
+                <div class="grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalAccounts">0</div>
+                        <div class="stat-label">Konta Bankowe</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalBalance">$0.00</div>
+                        <div class="stat-label">Całkowita Równowaga</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="pendingApplications">0</div>
+                        <div class="stat-label">Oczekujące Aplikacje</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">📊 Ostatnie Transakcje</div>
+                    <div id="recentTransactions" class="transaction-list"></div>
+                </div>
+            </div>
+
+            <!-- Application for Account -->
+            <div id="application" class="page">
+                <div class="card">
+                    <div class="card-title">📝 Aplikacja na Nowe Konto</div>
+                    <div id="applicationAlerts"></div>
+
+                    <form id="applicationForm" onsubmit="handleApplication(event)">
+                        <div class="form-group">
+                            <label for="accountName">Nazwa Konta</label>
+                            <input type="text" id="accountName" placeholder="np. Moje Oszczędności" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="accountType">Typ Konta</label>
+                            <select id="accountType" required>
+                                <option value="">Wybierz typ...</option>
+                                <option value="checking">Rachunek Bieżący</option>
+                                <option value="savings">Konto Oszczędnościowe</option>
+                                <option value="investment">Konto Inwestycyjne</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="accountReason">Uzasadnienie</label>
+                            <textarea id="accountReason" placeholder="Dlaczego chcesz otworzyć to konto?" required></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Wyślij Aplikację</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">📋 Moje Aplikacje</div>
+                    <div id="myApplications"></div>
+                </div>
+            </div>
+
+            <!-- My Accounts -->
+            <div id="accounts" class="page">
+                <h1 style="margin-bottom: 2rem;">Moje Konta 🏦</h1>
+                <div id="accountsList"></div>
+
+                <div class="card">
+                    <div class="card-title">💰 Zarządzanie Kontami</div>
+                    <p style="color: var(--text-muted); margin-bottom: 1rem;">Tutaj możesz przeglądać swoje konta bankowe i ich saldo.</p>
+                </div>
+            </div>
+
+            <!-- Transfer -->
+            <div id="transfer" class="page">
+                <div class="card">
+                    <div class="card-title">💸 Transfer Pieniędzy</div>
+                    <div id="transferAlerts"></div>
+
+                    <form id="transferForm" onsubmit="handleTransfer(event)">
+                        <div class="form-group">
+                            <label for="fromAccount">Z Konta</label>
+                            <select id="fromAccount" required></select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="toAccount">Na Konto</label>
+                            <select id="toAccount" required></select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="transferAmount">Kwota ($)</label>
+                            <input type="number" id="transferAmount" min="0.01" step="0.01" placeholder="0.00" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="transferNote">Notatka (opcjonalnie)</label>
+                            <textarea id="transferNote" placeholder="Opisz ten transfer..."></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Prześlij Transfer</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Admin Panel -->
+            <div id="admin" class="page">
+                <div class="card">
+                    <div class="card-title">🛡️ Panel Administracyjny</div>
+                    <div id="adminAlerts"></div>
+
+                    <div class="form-group" style="margin-bottom: 2rem;">
+                        <label for="adminPassword">Hasło Admina</label>
+                        <input type="password" id="adminPassword" placeholder="Wpisz hasło admina">
+                        <button type="button" class="btn btn-primary" onclick="verifyAdmin()" style="width: 100%; margin-top: 0.5rem;">Zweryfikuj</button>
+                    </div>
+
+                    <div id="adminContent" style="display: none;">
+                        <h2 style="margin-bottom: 1rem;">📬 Oczekujące Aplikacje</h2>
+                        <div id="pendingApplicationsList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            authDomain: "your-project.firebaseapp.com",
+            projectId: "your-project",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "xxxxxxxxxx",
+            appId: "1:xxxxxxxxxx:web:xxxxxxxxxxxxxxxx"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const functions = firebase.functions();
+
+        // Global State
+        let currentUser = null;
+        let isAdmin = false;
+
+        // Tab Switching
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
+
+            document.getElementById(tab + 'Tab').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Page Switching
+        function switchPage(page) {
+            document.querySelectorAll('#appPage .page').forEach(el => el.classList.remove('active'));
+            document.getElementById(page).classList.add('active');
+
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Load page-specific data
+            if (page === 'dashboard') {
+                loadDashboard();
+            } else if (page === 'accounts') {
+                loadAccounts();
+            } else if (page === 'application') {
+                loadApplications();
+            } else if (page === 'transfer') {
+                loadTransferForm();
+            } else if (page === 'admin') {
+                loadAdminPanel();
+            }
+        }
+
+        // Authentication
+        function handleLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            auth.signInWithEmailAndPassword(email, password)
+                .then(user => {
+                    currentUser = user.user;
+                    showMessage('Zalogowano pomyślnie!', 'success', 'authMessage');
+                    setTimeout(() => {
+                        switchAuthPage();
+                    }, 1000);
+                })
+                .catch(error => {
+                    showMessage('Błąd: ' + error.message, 'error', 'authMessage');
+                });
+        }
+
+        function handleRegister(event) {
+            event.preventDefault();
+            const name = document.getElementById('registerName').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+
+            auth.createUserWithEmailAndPassword(email, password)
+                .then(user => {
+                    currentUser = user.user;
+
+                    // Save user profile
+                    db.collection('users').doc(user.user.uid).set({
+                        name: name,
+                        email: email,
+                        createdAt: new Date(),
+                        isAdmin: false
+                    });
+
+                    showMessage('Konto utworzone! Zalogowany.', 'success', 'authMessage');
+                    setTimeout(() => {
+                        switchAuthPage();
+                    }, 1000);
+                })
+                .catch(error => {
+                    showMessage('Błąd: ' + error.message, 'error', 'authMessage');
+                });
+        }
+
+        function handleLogout() {
+            auth.signOut().then(() => {
+                currentUser = null;
+                isAdmin = false;
+                switchAuthPage();
+            });
+        }
+
+        function switchAuthPage() {
+            if (currentUser) {
+                document.getElementById('loginPage').classList.remove('active');
+                document.getElementById('appPage').classList.add('active');
+                loadUserInfo();
+                loadDashboard();
+            } else {
+                document.getElementById('appPage').classList.remove('active');
+                document.getElementById('loginPage').classList.add('active');
+            }
+        }
+
+        // Load User Info
+        async function loadUserInfo() {
+            if (!currentUser) return;
+
+            try {
+                const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                if (userDoc.exists) {
+                    const user = userDoc.data();
+                    document.getElementById('userName').textContent = user.name;
+                    document.getElementById('userDisplay').textContent = user.name;
+
+                    // Check if admin
+                    if (user.isAdmin) {
+                        isAdmin = true;
+                        document.getElementById('adminLink').style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading user:', error);
+            }
+        }
+
+        // Dashboard
+        async function loadDashboard() {
+            if (!currentUser) return;
+
+            try {
+                // Get user accounts
+                const accountsSnapshot = await db.collection('accounts')
+                    .where('userId', '==', currentUser.uid)
+                    .get();
+
+                let totalBalance = 0;
+                let accountCount = accountsSnapshot.size;
+
+                accountsSnapshot.forEach(doc => {
+                    totalBalance += doc.data().balance || 0;
+                });
+
+                // Get pending applications
+                const appsSnapshot = await db.collection('applications')
+                    .where('userId', '==', currentUser.uid)
+                    .where('status', '==', 'pending')
+                    .get();
+
+                document.getElementById('totalAccounts').textContent = accountCount;
+                document.getElementById('totalBalance').textContent = '$' + totalBalance.toFixed(2);
+                document.getElementById('pendingApplications').textContent = appsSnapshot.size;
+
+                // Load recent transactions
+                loadRecentTransactions();
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+            }
+        }
+
+        async function loadRecentTransactions() {
+            if (!currentUser) return;
+
+            try {
+                const snapshot = await db.collection('transactions')
+                    .where('userId', '==', currentUser.uid)
+                    .orderBy('date', 'desc')
+                    .limit(5)
+                    .get();
+
+                const container = document.getElementById('recentTransactions');
+                container.innerHTML = '';
+
+                if (snapshot.empty) {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>Brak transakcji</p></div>';
+                    return;
+                }
+
+                snapshot.forEach(doc => {
+                    const transaction = doc.data();
+                    const date = transaction.date.toDate().toLocaleDateString('pl-PL');
+                    const isPositive = transaction.type === 'deposit' || transaction.type === 'transfer_in';
+                    const amountClass = isPositive ? 'positive' : 'negative';
+                    const sign = isPositive ? '+' : '-';
+
+                    const element = document.createElement('div');
+                    element.className = 'transaction-item';
+                    element.innerHTML = `
+                        <div class="transaction-info">
+                            <div class="transaction-type">${transaction.description}</div>
+                            <div class="transaction-date">${date}</div>
+                        </div>
+                        <div class="transaction-amount ${amountClass}">${sign}$${Math.abs(transaction.amount).toFixed(2)}</div>
+                    `;
+                    container.appendChild(element);
+                });
+            } catch (error) {
+                console.error('Error loading transactions:', error);
+            }
+        }
+
+        // Applications
+        function handleApplication(event) {
+            event.preventDefault();
+
+            if (!currentUser) return;
+
+            const accountName = document.getElementById('accountName').value;
+            const accountType = document.getElementById('accountType').value;
+            const accountReason = document.getElementById('accountReason').value;
+
+            db.collection('applications').add({
+                userId: currentUser.uid,
+                accountName: accountName,
+                accountType: accountType,
+                reason: accountReason,
+                status: 'pending',
+                createdAt: new Date()
+            }).then(() => {
+                showMessage('Aplikacja wysłana! Czekaj na potwierdzenie.', 'success', 'applicationAlerts');
+                document.getElementById('applicationForm').reset();
+                loadApplications();
+            }).catch(error => {
+                showMessage('Błąd: ' + error.message, 'error', 'applicationAlerts');
+            });
+        }
+
+        async function loadApplications() {
+            if (!currentUser) return;
+
+            try {
+                const snapshot = await db.collection('applications')
+                    .where('userId', '==', currentUser.uid)
+                    .orderBy('createdAt', 'desc')
+                    .get();
+
+                const container = document.getElementById('myApplications');
+                container.innerHTML = '';
+
+                if (snapshot.empty) {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>Brak aplikacji</p></div>';
+                    return;
+                }
+
+                snapshot.forEach(doc => {
+                    const app = doc.data();
+                    const date = app.createdAt.toDate().toLocaleDateString('pl-PL');
+                    const statusClass = `badge-${app.status}`;
+
+                    const element = document.createElement('div');
+                    element.className = 'application-card';
+                    element.innerHTML = `
+                        <div class="application-header">
+                            <div>
+                                <div class="application-user">${app.accountName}</div>
+                                <div class="application-date">${date}</div>
+                            </div>
+                            <span class="badge ${statusClass}">${app.status === 'pending' ? 'Oczekujące' : app.status === 'approved' ? 'Zatwierdzone' : 'Odrzucone'}</span>
+                        </div>
+                        <div class="application-reason">${app.reason}</div>
+                    `;
+                    container.appendChild(element);
+                });
+            } catch (error) {
+                console.error('Error loading applications:', error);
+            }
+        }
+
+        // Accounts
+        async function loadAccounts() {
+            if (!currentUser) return;
+
+            try {
+                const snapshot = await db.collection('accounts')
+                    .where('userId', '==', currentUser.uid)
+                    .get();
+
+                const container = document.getElementById('accountsList');
+                container.innerHTML = '';
+
+                if (snapshot.empty) {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🏦</div><p>Nie masz jeszcze żadnych kont. Złóż aplikację!</p></div>';
+                    return;
+                }
+
+                snapshot.forEach(doc => {
+                    const account = doc.data();
+                    const element = document.createElement('div');
+                    element.className = 'account-card';
+                    element.innerHTML = `
+                        <div class="account-header">
+                            <div>
+                                <div class="account-name">${account.name}</div>
+                                <div class="account-number">Typ: ${account.type}</div>
+                            </div>
+                            <div class="account-balance">$${account.balance.toFixed(2)}</div>
+                        </div>
+                    `;
+                    container.appendChild(element);
+                });
+            } catch (error) {
+                console.error('Error loading accounts:', error);
+            }
+        }
+
+        // Transfer
+        async function loadTransferForm() {
+            if (!currentUser) return;
+
+            try {
+                const snapshot = await db.collection('accounts')
+                    .where('userId', '==', currentUser.uid)
+                    .get();
+
+                const fromSelect = document.getElementById('fromAccount');
+                const toSelect = document.getElementById('toAccount');
+
+                fromSelect.innerHTML = '<option value="">Wybierz konto źródłowe...</option>';
+                toSelect.innerHTML = '<option value="">Wybierz konto docelowe...</option>';
+
+                snapshot.forEach(doc => {
+                    const account = doc.data();
+                    const option = document.createElement('option');
+                    option.value = doc.id;
+                    option.textContent = `${account.name} ($${account.balance.toFixed(2)})`;
+
+                    fromSelect.appendChild(option);
+                    toSelect.appendChild(option.cloneNode(true));
+                });
+            } catch (error) {
+                console.error('Error loading transfer form:', error);
+            }
+        }
+
+        function handleTransfer(event) {
+            event.preventDefault();
+
+            if (!currentUser) return;
+
+            const fromAccountId = document.getElementById('fromAccount').value;
+            const toAccountId = document.getElementById('toAccount').value;
+            const amount = parseFloat(document.getElementById('transferAmount').value);
+            const note = document.getElementById('transferNote').value;
+
+            if (fromAccountId === toAccountId) {
+                showMessage('Nie możesz przesyłać pieniędzy na to samo konto!', 'error', 'transferAlerts');
+                return;
+            }
+
+            if (amount <= 0) {
+                showMessage('Kwota musi być większa niż 0!', 'error', 'transferAlerts');
+                return;
+            }
+
+            // Call cloud function for transfer
+            const transferFunds = functions.httpsCallable('transferFunds');
+            transferFunds({
+                fromAccountId: fromAccountId,
+                toAccountId: toAccountId,
+                amount: amount,
+                note: note
+            })
+            .then(() => {
+                showMessage('Transfer wykonany pomyślnie!', 'success', 'transferAlerts');
+                document.getElementById('transferForm').reset();
+                loadTransferForm();
+                loadAccounts();
+            })
+            .catch(error => {
+                showMessage('Błąd: ' + error.message, 'error', 'transferAlerts');
+            });
+        }
+
+        // Admin Panel
+        function verifyAdmin() {
+            const password = document.getElementById('adminPassword').value;
+            const adminPassword = 'admin123'; // Change this!
+
+            if (password === adminPassword) {
+                document.getElementById('adminContent').style.display = 'block';
+                showMessage('Dostęp do panelu admina udzielony!', 'success', 'adminAlerts');
+                loadPendingApplications();
+            } else {
+                showMessage('Błędne hasło!', 'error', 'adminAlerts');
+            }
+        }
+
+        async function loadPendingApplications() {
+            try {
+                const snapshot = await db.collection('applications')
+                    .where('status', '==', 'pending')
+                    .orderBy('createdAt', 'desc')
+                    .get();
+
+                const container = document.getElementById('pendingApplicationsList');
+                container.innerHTML = '';
+
+                if (snapshot.empty) {
+                    container.innerHTML = '<div class="empty-state"><p>Brak oczekujących aplikacji</p></div>';
+                    return;
+                }
+
+                snapshot.forEach(doc => {
+                    const app = doc.data();
+                    const date = app.createdAt.toDate().toLocaleDateString('pl-PL');
+
+                    const element = document.createElement('div');
+                    element.className = 'application-card';
+                    element.innerHTML = `
+                        <div class="application-header">
+                            <div>
+                                <div class="application-user">${app.accountName}</div>
+                                <div class="application-date">ID: ${doc.id}</div>
+                            </div>
+                            <span class="badge badge-pending">Oczekujące</span>
+                        </div>
+                        <div class="application-reason">${app.reason}</div>
+                        <div class="application-actions">
+                            <button class="btn btn-primary" onclick="approveApplication('${doc.id}', '${app.accountName}', '${app.accountType}', '${app.userId}')">Zatwierdź</button>
+                            <button class="btn btn-danger" onclick="rejectApplication('${doc.id}')">Odrzuć</button>
+                        </div>
+                    `;
+                    container.appendChild(element);
+                });
+            } catch (error) {
+                console.error('Error loading pending applications:', error);
+            }
+        }
+
+        function approveApplication(appId, accountName, accountType, userId) {
+            db.collection('applications').doc(appId).update({
+                status: 'approved'
+            }).then(() => {
+                // Create account
+                db.collection('accounts').add({
+                    userId: userId,
+                    name: accountName,
+                    type: accountType,
+                    balance: 1000, // Initial balance
+                    createdAt: new Date()
+                });
+
+                showMessage('Aplikacja zatwierdzona! Konto utworzone.', 'success', 'adminAlerts');
+                loadPendingApplications();
+            }).catch(error => {
+                showMessage('Błąd: ' + error.message, 'error', 'adminAlerts');
+            });
+        }
+
+        function rejectApplication(appId) {
+            db.collection('applications').doc(appId).update({
+                status: 'rejected'
+            }).then(() => {
+                showMessage('Aplikacja odrzucona.', 'success', 'adminAlerts');
+                loadPendingApplications();
+            }).catch(error => {
+                showMessage('Błąd: ' + error.message, 'error', 'adminAlerts');
+            });
+        }
+
+        // Utility Functions
+        function showMessage(message, type, containerId) {
+            const container = document.getElementById(containerId);
+            const alertClass = `alert alert-${type}`;
+            container.innerHTML = `<div class="${alertClass}">${message}</div>`;
+
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+
+        // Initialize
+        auth.onAuthStateChanged(user => {
+            currentUser = user;
+            switchAuthPage();
+        });
+    </script>
+</body>
+</html>
